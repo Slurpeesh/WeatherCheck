@@ -2,7 +2,12 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.WeatherCheck" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="android:windowBackground">@color/light_bg_color</item>
+        <item name="android:textColorPrimary">@color/black</item>
+        <item name="colorPrimary">@color/light_colorPrimary</item>
+        <item name="colorPrimaryDark">@color/light_colorPrimaryDark</item>
+        <item name="colorSecondary">@color/light_colorPrimaryVariant</item>
+        <item name="colorOnPrimary">@color/black</item>
     </style>
 
     <style name="Theme.WeatherCheck" parent="Base.Theme.WeatherCheck" />
