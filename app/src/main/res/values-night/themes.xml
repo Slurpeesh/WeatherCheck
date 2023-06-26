@@ -2,6 +2,11 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.WeatherCheck" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="android:windowBackground">@color/dark_bg_color</item>
+        <item name="android:textColorPrimary">@color/white</item>
+        <item name="colorPrimary">@color/dark_colorPrimary</item>
+        <item name="colorPrimaryDark">@color/dark_colorPrimaryDark</item>
+        <item name="colorSecondary">@color/dark_colorPrimaryVariant</item>
+        <item name="colorOnPrimary">@color/white</item>
     </style>
 </resources>

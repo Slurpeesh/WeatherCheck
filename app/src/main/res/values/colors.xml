@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- Ligth theme colors -->
+    <color name="light_bg_color">#d9edff</color>
+    <color name="light_colorPrimary">#87c7ff</color>
+    <color name="light_colorPrimaryDark">#6596c2</color>
+    <color name="light_colorPrimaryVariant">#65b9c2</color>
+
+    <!-- Dark theme colors -->
+    <color name="dark_bg_color">#00182e</color>
+    <color name="dark_colorPrimary">#01417a</color>
+    <color name="dark_colorPrimaryDark">#173754</color>
+    <color name="dark_colorPrimaryVariant">#65b9c2</color>
+
 </resources>
