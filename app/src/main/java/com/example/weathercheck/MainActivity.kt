@@ -3,9 +3,13 @@ package com.example.weathercheck
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.AsyncTask
+import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
 import android.widget.ImageView
+import android.provider.Settings
+import android.net.Uri
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
@@ -30,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private val API = "c5090c66c639d7951f8b759a2cc3da96"
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private var forecastWeatherList: MutableList<ForecastWeather> = mutableListOf()
+    private var locationPermissionDenied = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,19 +42,20 @@ class MainActivity : AppCompatActivity() {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
         val button_refresh = findViewById<Button>(R.id.btn_refresh)
+        val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         button_refresh.text = "${langDict[lang]?.get("update")}"
 
         fetchLocation()
 
-        val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
         button_refresh.setOnClickListener {
             button_refresh.isEnabled = false
+            swipeRefreshLayout.isRefreshing = true
             fetchLocation()
-            button_refresh.isEnabled = true
         }
         swipeRefreshLayout.setOnRefreshListener {
+            button_refresh.isEnabled = false
+            swipeRefreshLayout.isRefreshing = true
             fetchLocation()
-            swipeRefreshLayout.isRefreshing = false
         }
     }
 
@@ -73,14 +79,14 @@ class MainActivity : AppCompatActivity() {
                 if (task.isSuccessful) {
                     val location = task.result
                     if (location != null) {
-                        WeatherTask("${location.latitude}", "${location.longitude}").execute()
+                        execute_WeatherTask("${location.latitude}", "${location.longitude}")
                     } else {
                         Log.e("WeatherData", "Местоположение недоступно")
-                        WeatherTask("51.50853", "-0.12574").execute() // Получаем погоду Лондона
+                        execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
                     }
                 } else {
                     Log.e("WeatherData", "Ошибка при получении местоположения: ${task.exception}")
-                    WeatherTask("51.50853", "-0.12574").execute() // Получаем погоду Лондона
+                    execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
                 }
             }
         }
@@ -92,11 +98,67 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             fetchLocation()
         } else {
-            WeatherTask("51.50853", "-0.12574").execute() // Получаем погоду Лондона
+            // Permission denied
+            if (!locationPermissionDenied) {
+                // This is the first denial
+                Log.d("WeatherData", "We are going into denial")
+                locationPermissionDenied = true
+                // Show a message to the user informing that location permission is required
+                // and provide an option to navigate to app settings for enabling the permission.
+                locationPermissionDenied = true
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle(langDict["$lang"]?.get("permission_required"))
+                    .setMessage(langDict["$lang"]?.get("permission_ask"))
+                    .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
+                        // Open app settings
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri = Uri.fromParts("package", packageName, null)
+                        intent.data = uri
+                        startActivity(intent)
+                    }
+                    .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                        dialog.dismiss()
+                        execute_WeatherTask("51.50853", "-0.12574")
+                    }
+                    .setCancelable(false)
+                val dialog = builder.create()
+                dialog.show()
+            } else {
+                // This is the second denial, user has denied the permission twice
+                // Show a message informing that weather information cannot be accessed
+                // because the location permission is denied.
+                Log.d("WeatherData", "We are going into double denial!!!")
+                locationPermissionDenied = true
+                val builder = AlertDialog.Builder(this)
+                builder.setTitle(langDict["$lang"]?.get("permission_required"))
+                    .setMessage(langDict["$lang"]?.get("permission_alert"))
+                    .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
+                        // Open app settings
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri = Uri.fromParts("package", packageName, null)
+                        intent.data = uri
+                        startActivity(intent)
+                    }
+                    .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                        dialog.dismiss()
+                        execute_WeatherTask("51.50853", "-0.12574")
+                    }
+                    .setCancelable(false)
+                val dialog = builder.create()
+                dialog.show()
+            }
         }
+    }
+
+    private fun execute_WeatherTask(lat: String, lon: String) {
+        val button_refresh = findViewById<Button>(R.id.btn_refresh)
+        val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
+        WeatherTask(lat, lon).execute()
+        swipeRefreshLayout.isRefreshing = false
+        button_refresh.isEnabled = true
     }
 
     // Функция для преобразования метки времени Unix в строку даты
