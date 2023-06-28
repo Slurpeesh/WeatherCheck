@@ -4,12 +4,16 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.AsyncTask
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.widget.TextView
 import android.widget.ImageView
 import android.provider.Settings
 import android.net.Uri
+import android.os.Build
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
@@ -18,6 +22,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.squareup.picasso.Picasso
 import android.util.Log
+import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -36,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private var forecastWeatherList: MutableList<ForecastWeather> = mutableListOf()
     private var locationPermissionDenied = false
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -48,50 +55,74 @@ class MainActivity : AppCompatActivity() {
         fetchLocation()
 
         button_refresh.setOnClickListener {
-            button_refresh.isEnabled = false
-            swipeRefreshLayout.isRefreshing = true
             fetchLocation()
         }
         swipeRefreshLayout.setOnRefreshListener {
-            button_refresh.isEnabled = false
-            swipeRefreshLayout.isRefreshing = true
             fetchLocation()
+            swipeRefreshLayout.isRefreshing = false
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     private fun fetchLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION),
-                100
-            )
-        } else {
-            // Location permissions have already been granted, so perform a location query
-            val priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-            val ct = CancellationTokenSource()
-            val locationTask: Task<Location> = fusedLocationProviderClient.getCurrentLocation(priority, ct.token)
-
-            locationTask.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    val location = task.result
-                    if (location != null) {
-                        execute_WeatherTask("${location.latitude}", "${location.longitude}")
+        // Checking internet connection
+        if (!isOnline(this)) {
+            val builder = AlertDialog.Builder(this)
+            builder.setTitle(langDict["$lang"]?.get("internet_required"))
+                .setMessage(langDict["$lang"]?.get("internet_ask"))
+                .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
+                    // Открыть настройки приложения
+                    Log.d("WeatherData", "We are going into settings")
+                    val settingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
+                    val packageManager = packageManager
+                    if (settingsIntent.resolveActivity(packageManager) != null) {
+                        startActivity(settingsIntent)
                     } else {
-                        Log.e("WeatherData", "Местоположение недоступно")
+                        Toast.makeText(this, langDict["$lang"]?.get("no_wifi_settings"), Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setCancelable(false)
+            val dialog = builder.create()
+            dialog.show()
+        } else {
+            if (ActivityCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION),
+                    100
+                )
+            } else {
+                // Location permissions have already been granted, so perform a location query
+                val priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                val ct = CancellationTokenSource()
+                val locationTask: Task<Location> =
+                    fusedLocationProviderClient.getCurrentLocation(priority, ct.token)
+
+                locationTask.addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val location = task.result
+                        if (location != null) {
+                            execute_WeatherTask("${location.latitude}", "${location.longitude}")
+                        } else {
+                            Log.e("WeatherData", "Местоположение недоступно")
+                            execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
+                        }
+                    } else {
+                        Log.e("WeatherData", "Ошибка при получении местоположения: ${task.exception}")
                         execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
                     }
-                } else {
-                    Log.e("WeatherData", "Ошибка при получении местоположения: ${task.exception}")
-                    execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
                 }
             }
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -105,7 +136,6 @@ class MainActivity : AppCompatActivity() {
             if (!locationPermissionDenied) {
                 // This is the first denial
                 Log.d("WeatherData", "We are going into denial")
-                locationPermissionDenied = true
                 // Show a message to the user informing that location permission is required
                 // and provide an option to navigate to app settings for enabling the permission.
                 locationPermissionDenied = true
@@ -153,12 +183,34 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun isOnline(context: Context): Boolean {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (connectivityManager != null) {
+            val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
+            if (capabilities != null) {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_CELLULAR")
+                    return true
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_WIFI")
+                    return true
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_ETHERNET")
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     private fun execute_WeatherTask(lat: String, lon: String) {
         val button_refresh = findViewById<Button>(R.id.btn_refresh)
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
+        button_refresh.isEnabled = false
+        swipeRefreshLayout.isRefreshing = true
         WeatherTask(lat, lon).execute()
-        swipeRefreshLayout.isRefreshing = false
-        button_refresh.isEnabled = true
     }
 
     // Функция для преобразования метки времени Unix в строку даты
@@ -206,6 +258,8 @@ class MainActivity : AppCompatActivity() {
         override fun onPostExecute(result: Pair<String?, String?>) {
             super.onPostExecute(result)
             Log.d("WeatherData", "onPostExecute started working")
+            val button_refresh = findViewById<Button>(R.id.btn_refresh)
+            val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
             val currentWeatherJson = result.first
             val forecastWeatherJson = result.second
 
@@ -330,9 +384,13 @@ class MainActivity : AppCompatActivity() {
                 }
                 // Clear list
                 forecastWeatherList.clear()
+                swipeRefreshLayout.isRefreshing = false
+                button_refresh.isEnabled = true
 
             } else {
                 Log.e("WeatherData", "Error fetching weather data")
+                swipeRefreshLayout.isRefreshing = false
+                button_refresh.isEnabled = true
             }
         }
     }
