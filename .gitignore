@@ -12,5 +12,5 @@
 .externalNativeBuild
 .cxx
 local.properties
-**/app/build/
+/app/build/*
 !/app/build/outputs
