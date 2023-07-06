@@ -1,13 +1,11 @@
 package com.example.weathercheck
 
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.AsyncTask
 import android.app.AlertDialog
-import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.widget.TextView
 import android.widget.ImageView
@@ -27,16 +25,15 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.android.gms.tasks.Task
-import org.w3c.dom.Text
 import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
-    var lang: String = Locale.getDefault().getLanguage()
+    var lang: String = Locale.getDefault().language
     private val API = "c5090c66c639d7951f8b759a2cc3da96"
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private var forecastWeatherList: MutableList<ForecastWeather> = mutableListOf()
@@ -63,25 +60,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     @RequiresApi(Build.VERSION_CODES.M)
     private fun fetchLocation() {
         // Checking internet connection
         if (!isOnline(this)) {
             val builder = AlertDialog.Builder(this)
-            builder.setTitle(langDict["$lang"]?.get("internet_required"))
-                .setMessage(langDict["$lang"]?.get("internet_ask"))
-                .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
-                    // Открыть настройки приложения
-                    Log.d("WeatherData", "We are going into settings")
+            builder.setTitle(langDict[lang]?.get("internet_required"))
+                .setMessage(langDict[lang]?.get("internet_ask"))
+                .setPositiveButton(langDict[lang]?.get("go_to_settings")) { _, _ ->
+                    // Open the wifi settings
                     val settingsIntent = Intent(Settings.ACTION_WIFI_SETTINGS)
                     val packageManager = packageManager
                     if (settingsIntent.resolveActivity(packageManager) != null) {
                         startActivity(settingsIntent)
                     } else {
-                        Toast.makeText(this, langDict["$lang"]?.get("no_wifi_settings"), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, langDict[lang]?.get("no_wifi_settings"), Toast.LENGTH_SHORT).show()
                     }
                 }
-                .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                .setNegativeButton(langDict[lang]?.get("cancel")) { dialog, _ ->
                     dialog.dismiss()
                 }
                 .setCancelable(false)
@@ -99,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                 )
             } else {
                 // Location permissions have already been granted, so perform a location query
-                val priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+                val priority = Priority.PRIORITY_HIGH_ACCURACY
                 val ct = CancellationTokenSource()
                 val locationTask: Task<Location> =
                     fusedLocationProviderClient.getCurrentLocation(priority, ct.token)
@@ -110,12 +107,12 @@ class MainActivity : AppCompatActivity() {
                         if (location != null) {
                             execute_WeatherTask("${location.latitude}", "${location.longitude}")
                         } else {
-                            Log.e("WeatherData", "Местоположение недоступно")
-                            execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
+                            Log.e("WeatherData", "Location not available")
+                            execute_WeatherTask("51.50853", "-0.12574") // Getting the weather in London
                         }
                     } else {
-                        Log.e("WeatherData", "Ошибка при получении местоположения: ${task.exception}")
-                        execute_WeatherTask("51.50853", "-0.12574") // Получаем погоду Лондона
+                        Log.e("WeatherData", "Location acquisition error: ${task.exception}")
+                        execute_WeatherTask("51.50853", "-0.12574") // Getting the weather in London
                     }
                 }
             }
@@ -135,21 +132,20 @@ class MainActivity : AppCompatActivity() {
             // Permission denied
             if (!locationPermissionDenied) {
                 // This is the first denial
-                Log.d("WeatherData", "We are going into denial")
                 // Show a message to the user informing that location permission is required
                 // and provide an option to navigate to app settings for enabling the permission.
                 locationPermissionDenied = true
                 val builder = AlertDialog.Builder(this)
-                builder.setTitle(langDict["$lang"]?.get("permission_required"))
-                    .setMessage(langDict["$lang"]?.get("permission_ask"))
-                    .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
+                builder.setTitle(langDict[lang]?.get("permission_required"))
+                    .setMessage(langDict[lang]?.get("permission_ask"))
+                    .setPositiveButton(langDict[lang]?.get("go_to_settings")) { _, _ ->
                         // Open app settings
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                         val uri = Uri.fromParts("package", packageName, null)
                         intent.data = uri
                         startActivity(intent)
                     }
-                    .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                    .setNegativeButton(langDict[lang]?.get("cancel")) { dialog, _ ->
                         dialog.dismiss()
                         execute_WeatherTask("51.50853", "-0.12574")
                     }
@@ -160,19 +156,18 @@ class MainActivity : AppCompatActivity() {
                 // This is the second denial, user has denied the permission twice
                 // Show a message informing that weather information cannot be accessed
                 // because the location permission is denied.
-                Log.d("WeatherData", "We are going into double denial!!!")
                 locationPermissionDenied = true
                 val builder = AlertDialog.Builder(this)
-                builder.setTitle(langDict["$lang"]?.get("permission_required"))
-                    .setMessage(langDict["$lang"]?.get("permission_alert"))
-                    .setPositiveButton(langDict["$lang"]?.get("go_to_settings")) { _, _ ->
+                builder.setTitle(langDict[lang]?.get("permission_required"))
+                    .setMessage(langDict[lang]?.get("permission_alert"))
+                    .setPositiveButton(langDict[lang]?.get("go_to_settings")) { _, _ ->
                         // Open app settings
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                         val uri = Uri.fromParts("package", packageName, null)
                         intent.data = uri
                         startActivity(intent)
                     }
-                    .setNegativeButton(langDict["$lang"]?.get("cancel")) { dialog, _ ->
+                    .setNegativeButton(langDict[lang]?.get("cancel")) { dialog, _ ->
                         dialog.dismiss()
                         execute_WeatherTask("51.50853", "-0.12574")
                     }
@@ -183,28 +178,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.M)
-    fun isOnline(context: Context): Boolean {
-        val connectivityManager =
-            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        if (connectivityManager != null) {
-            val capabilities = connectivityManager.getNetworkCapabilities(connectivityManager.activeNetwork)
-            if (capabilities != null) {
-                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_CELLULAR")
-                    return true
-                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_WIFI")
-                    return true
-                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                    Log.i("Internet", "NetworkCapabilities.TRANSPORT_ETHERNET")
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
     private fun execute_WeatherTask(lat: String, lon: String) {
         val button_refresh = findViewById<Button>(R.id.btn_refresh)
         val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
@@ -213,28 +186,12 @@ class MainActivity : AppCompatActivity() {
         WeatherTask(lat, lon).execute()
     }
 
-    // Функция для преобразования метки времени Unix в строку даты
-    private fun convertUnixTimestampToDate(timestamp: Long): String {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        return dateFormat.format(Date(timestamp * 1000))
-    }
-
-    data class ForecastWeather(
-        val date: String,
-        val time: String,
-        val temperature: Double,
-        val description: String,
-        val wind: Int,
-        val pressure: Int,
-        val humidity: Int,
-        val iconCode: String
-    )
-
+    @SuppressLint("StaticFieldLeak")
     inner class WeatherTask(private val latitude: String, private val longitude: String) : AsyncTask<Void, Void, Pair<String?, String?>>() {
 
+        @Deprecated("Deprecated in Java")
         override fun doInBackground(vararg params: Void?): Pair<String?, String?> {
             val client = OkHttpClient()
-            Log.d("WeatherData", "doInBackground started working")
             val currentWeatherUrl = "https://api.openweathermap.org/data/2.5/weather?lat=$latitude&lon=$longitude&appid=$API&units=metric&lang=$lang"
             val forecastWeatherUrl = "https://api.openweathermap.org/data/2.5/forecast?lat=$latitude&lon=$longitude&cnt=40&appid=$API&units=metric&lang=$lang"
 
@@ -255,22 +212,20 @@ class MainActivity : AppCompatActivity() {
             return Pair(currentWeatherJson, forecastWeatherJson)
         }
 
+        @SuppressLint("SetTextI18n", "SimpleDateFormat", "DiscouragedApi")
+        @Deprecated("Deprecated in Java")
         override fun onPostExecute(result: Pair<String?, String?>) {
             super.onPostExecute(result)
-            Log.d("WeatherData", "onPostExecute started working")
             val button_refresh = findViewById<Button>(R.id.btn_refresh)
             val swipeRefreshLayout = findViewById<SwipeRefreshLayout>(R.id.swipeRefreshLayout)
             val currentWeatherJson = result.first
             val forecastWeatherJson = result.second
 
-            Log.d("WeatherData", "Current Weather: $currentWeatherJson")
-            Log.d("WeatherData", "Forecast Weather: $forecastWeatherJson")
-
             if (currentWeatherJson != null && forecastWeatherJson != null) {
                 // Processing current weather data
-                val currentWeather = JSONObject(currentWeatherJson) // Переименована переменная
+                val currentWeather = JSONObject(currentWeatherJson) // Renamed variable
 
-                // Получение данных о текущей погоде
+                // Getting data about the current weather
                 val temperature = currentWeather.getJSONObject("main").getDouble("temp")
                 val feelsLike = currentWeather.getJSONObject("main").getDouble("feels_like")
                 val city_name = currentWeather.getString("name")
@@ -309,9 +264,9 @@ class MainActivity : AppCompatActivity() {
                 val currentDate = dateFormat.format(Calendar.getInstance().time)
 
                 for (i in 0 until forecastWeatherArray.length()) {
-                    val forecastWeatherObject = forecastWeatherArray.getJSONObject(i)
+                    val forecastWeatherObject: JSONObject = forecastWeatherArray.getJSONObject(i)
                     val dateTime = forecastWeatherObject.getString("dt_txt")
-                    if (dateTime.endsWith("15:00:00")) { // Фильтр для времени 15:00
+                    if (dateTime.endsWith("15:00:00")) { // Filter for the time 15:00
                         val date = dateFormat.parse(dateTime.substring(0, 10))
                         val temperature = forecastWeatherObject.getJSONObject("main").getDouble("temp")
                         val weatherArray = forecastWeatherObject.getJSONArray("weather")
@@ -322,11 +277,11 @@ class MainActivity : AppCompatActivity() {
                         val humidity = forecastWeatherObject.getJSONObject("main").getInt("humidity")
                         val pressure = forecastWeatherObject.getJSONObject("main").getInt("pressure")
 
-                        // Проверка, чтобы исключить текущий день
+                        // Check to exclude the current day
                         if (date != null && dateFormat.format(date) != currentDate) {
                             val formattedDate = dateFormat.format(date)
 
-                            // Создаем объект ForecastWeather и добавляем его в список
+                            // Create ForecastWeather object and add it to the list
                             val forecastWeather = ForecastWeather(
                                 formattedDate,
                                 "15:00",
@@ -346,8 +301,6 @@ class MainActivity : AppCompatActivity() {
                     forecastWeatherList.removeAt(4)
                 }
 
-                Log.d("WeatherData", "$forecastWeatherList")
-
                 for (i in forecastWeatherList.indices) {
                     val forecastWeather = forecastWeatherList[i]
                     val date = forecastWeather.date
@@ -358,7 +311,7 @@ class MainActivity : AppCompatActivity() {
                     val pressure = forecastWeather.pressure
                     val humidity = forecastWeather.humidity
 
-                    // Формирование идентификаторов элементов интерфейса на основе индекса i
+                    // Generation of interface element identifiers based on the index i
                     val weatherIconId = resources.getIdentifier("weather_secondary_${i+1}_widget_icon", "id", packageName)
                     val tempTextId = resources.getIdentifier("weather_secondary_${i+1}_widget_info_temp", "id", packageName)
                     val dateTextId = resources.getIdentifier("weather_secondary_${i+1}_widget_info_date", "id", packageName)
@@ -374,8 +327,12 @@ class MainActivity : AppCompatActivity() {
                     val iconUrl = "https://openweathermap.org/img/wn/$iconCode@2x.png"
                     Picasso.get().load(iconUrl).into(weatherIcon)
                     tempText.text = "$temperature °C"
-                    dateText.text = "$date"
-                    descText.text = "$desc".capitalize()
+                    dateText.text = date
+                    descText.text = desc.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase(
+                            Locale.ROOT
+                        ) else it.toString()
+                    }
                     infoText.text = "${langDict[lang]?.get("wind")}: $wind ${langDict[lang]?.get("m/s")};" +
                             System.lineSeparator() +
                             "${langDict[lang]?.get("humidity")}: $humidity %; " +
